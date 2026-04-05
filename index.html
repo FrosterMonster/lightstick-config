@@ -106,6 +106,18 @@
   <button class="tab" data-mode="2" onclick="switchTab(2)">Mode 2 — Timer Mode</button>
 </div>
 
+<div id="audioPanel" style="display:none; padding:10px 20px; background:#151528; border-bottom:1px solid #2a2a4a;">
+  <div style="display:flex; align-items:center; gap:12px;">
+    <button class="btn btn-ghost" style="padding:4px 8px; font-size:12px;" onclick="document.getElementById('audioInput').click()">🎵 Load MP3</button>
+    <input type="file" id="audioInput" accept="audio/mpeg, audio/mp3" style="display:none" onchange="loadAudio(event)">
+    <audio id="audioPlayer" controls style="height:32px; flex:1;"></audio>
+    <div style="background:#0a0a14; padding:6px 12px; border-radius:6px; border:1px solid #333;">
+      <span style="font-size:11px; color:#888; margin-right:6px;">BGM TIME</span>
+      <span id="audioTime" style="font-family:monospace; font-size:15px; color:#4ade80; font-weight:bold;">00.00 / 00.00</span>
+    </div>
+  </div>
+</div>
+
 <div class="main">
   <div class="lib">
     <h2>Effect Library (Click to Add)</h2>
@@ -280,8 +292,8 @@ function renderParams() {
   if (currentMode === 2) {
     durHtml = `
       <div class="param-group">
-        <div class="param-label"><span>Duration</span><span class="param-val">${s.dur} sec</span></div>
-        <input type="number" value="${s.dur}" min="1" max="3600" onchange="updateParam('dur',parseInt(this.value)||5)">
+        <div class="param-label"><span>Duration</span><span class="param-val">${Number(s.dur).toFixed(2)} sec</span></div>
+        <input type="number" step="0.01" value="${s.dur}" min="0.01" max="3600" onchange="updateParam('dur', parseFloat(this.value)||5.00)">
       </div>
     `;
   }
@@ -341,6 +353,10 @@ function switchTab(mode) {
   document.querySelectorAll('.tab').forEach(t => {
     t.classList.toggle('active', +t.dataset.mode === mode);
   });
+  
+  // 只有 Mode 2 才顯示音樂播放器
+  document.getElementById('audioPanel').style.display = (mode === 2) ? 'block' : 'none';
+  
   renderSeq();
   renderParams();
 }
@@ -456,7 +472,8 @@ function handleResponse(line) {
     } else if (line.startsWith('E:') && readConfigState === 'M2') {
       const parts = line.substring(2).split(',').map(Number);
       if (parts.length >= 6) {
-        readM2.push({ type:parts[0], hue:parts[1], sat:parts[2], bri:parts[3], spd:parts[4], dur:parts[5] });
+        // 讀取時將毫秒除以 1000 轉為帶小數的秒數
+        readM2.push({ type:parts[0], hue:parts[1], sat:parts[2], bri:parts[3], spd:parts[4], dur: parts[5] / 1000 });
       }
     } else if (line === 'CFG:END') {
       sequences[1] = readM1;
@@ -485,11 +502,12 @@ async function uploadConfig() {
     await sleep(50);
   }
 
-  // Mode 2
+// Mode 2
   await sendCmd('M2:' + m2.length);
   await sleep(100);
   for (const s of m2) {
-    await sendCmd(`E:${s.type},${s.hue},${s.sat},${s.bri},${s.spd},${s.dur}`);
+    // 傳送時將秒數乘以 1000 轉為毫秒
+    await sendCmd(`E:${s.type},${s.hue},${s.sat},${s.bri},${s.spd},${Math.round(s.dur * 1000)}`);
     await sleep(50);
   }
 
@@ -590,6 +608,31 @@ function handleFileSelect(event) {
   // 以純文字方式讀取檔案
   reader.readAsText(file);
 }
+
+ // ========== Audio Player Logic ==========
+function loadAudio(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const audio = document.getElementById('audioPlayer');
+  audio.src = URL.createObjectURL(file);
+  audio.load();
+  log('Loaded audio: ' + file.name, 'rx');
+}
+
+// 監聽播放進度，精準至小數點後兩位
+window.addEventListener('DOMContentLoaded', () => {
+  const audio = document.getElementById('audioPlayer');
+  const timeDisplay = document.getElementById('audioTime');
+  
+  if (audio && timeDisplay) {
+    audio.addEventListener('timeupdate', () => {
+      const cur = audio.currentTime.toFixed(2);
+      const tot = (audio.duration || 0).toFixed(2);
+      timeDisplay.textContent = `${cur.padStart(5, '0')} / ${tot.padStart(5, '0')}`;
+    });
+  }
+});
+ 
 // ========== Utils ==========
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
