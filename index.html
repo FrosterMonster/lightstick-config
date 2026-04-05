@@ -106,8 +106,8 @@
   <button class="tab" data-mode="2" onclick="switchTab(2)">Mode 2 — Timer Mode</button>
 </div>
 
-<div id="audioPanel" style="display:none; padding:10px 20px; background:#151528; border-bottom:1px solid #2a2a4a;">
-  <div style="display:flex; align-items:center; gap:12px;">
+<div id="audioPanel" style="display:none; flex-direction:column; background:#151528; border-bottom:1px solid #2a2a4a;">
+  <div style="display:flex; align-items:center; gap:12px; padding:10px 20px;">
     <button class="btn btn-ghost" style="padding:4px 8px; font-size:12px;" onclick="document.getElementById('audioInput').click()">🎵 Load MP3</button>
     <input type="file" id="audioInput" accept="audio/mpeg, audio/mp3" style="display:none" onchange="loadAudio(event)">
     <audio id="audioPlayer" controls style="height:32px; flex:1;"></audio>
@@ -115,6 +115,10 @@
       <span style="font-size:11px; color:#888; margin-right:6px;">BGM TIME</span>
       <span id="audioTime" style="font-family:monospace; font-size:15px; color:#4ade80; font-weight:bold;">00.00 / 00.00</span>
     </div>
+  </div>
+  <div style="padding:8px 20px; background:#1e1e2e; border-top:1px dashed #2a2a4a; display:flex; gap:24px; font-size:12px; color:#aaa;">
+    <div>Total：<span id="statTotalDur" style="font-family:monospace; font-size:14px; color:#f59e0b; font-weight:bold;">0.00</span> second</div>
+    <div>Diff：<span id="statDiff" style="font-family:monospace; font-size:14px; font-weight:bold;">0.00</span> second</div>
   </div>
 </div>
 
@@ -228,8 +232,10 @@ function renderSeq() {
       </div>
     `;
   }).join('');
+// 渲染完清單後，順便計算並更新一下統計資料
+  if (typeof refreshAudioTimeAndStats === 'function') refreshAudioTimeAndStats();
 }
-
+ 
 // ========== Item Selection ==========
 function selectItem(i) {
   selectedIdx = i;
@@ -355,7 +361,7 @@ function switchTab(mode) {
   });
   
   // 只有 Mode 2 才顯示音樂播放器
-  document.getElementById('audioPanel').style.display = (mode === 2) ? 'block' : 'none';
+  document.getElementById('audioPanel').style.display = (mode === 2) ? 'flex' : 'none';
   
   renderSeq();
   renderParams();
@@ -609,7 +615,9 @@ function handleFileSelect(event) {
   reader.readAsText(file);
 }
 
- // ========== Audio Player Logic ==========
+// ========== Audio Player & Stats Logic ==========
+let isAudioPlaying = false;
+
 function loadAudio(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -619,19 +627,65 @@ function loadAudio(event) {
   log('Loaded audio: ' + file.name, 'rx');
 }
 
-// 監聽播放進度，精準至小數點後兩位
+// 監聽播放狀態，啟動 60fps 高幀率時間更新
 window.addEventListener('DOMContentLoaded', () => {
-  const audio = document.getElementById('audioPlayer');
-  const timeDisplay = document.getElementById('audioTime');
+  renderEffectLib();
+  renderSeq();
   
-  if (audio && timeDisplay) {
-    audio.addEventListener('timeupdate', () => {
-      const cur = audio.currentTime.toFixed(2);
-      const tot = (audio.duration || 0).toFixed(2);
-      timeDisplay.textContent = `${cur.padStart(5, '0')} / ${tot.padStart(5, '0')}`;
+  const audio = document.getElementById('audioPlayer');
+  if (audio) {
+    audio.addEventListener('play', () => {
+      isAudioPlaying = true;
+      updateAudioTimeLoop(); // 開始瘋狂刷新
     });
+    audio.addEventListener('pause', () => {
+      isAudioPlaying = false;
+      refreshAudioTimeAndStats(); // 暫停時最後確保數字精準鎖定
+    });
+    audio.addEventListener('seeked', refreshAudioTimeAndStats); // 使用者拖拉進度條時也要更新
   }
 });
+
+// 使用 requestAnimationFrame 達到無縫的數字滾動
+function updateAudioTimeLoop() {
+  if (!isAudioPlaying) return;
+  refreshAudioTimeAndStats();
+  requestAnimationFrame(updateAudioTimeLoop);
+}
+
+// 同時更新時間與 Mode 2 的統計數值
+function refreshAudioTimeAndStats() {
+  const audio = document.getElementById('audioPlayer');
+  const timeDisplay = document.getElementById('audioTime');
+  if (!audio || !timeDisplay) return;
+
+  // 1. 更新播放器時間顯示
+  const cur = audio.currentTime.toFixed(2);
+  const tot = (audio.duration || 0).toFixed(2);
+  timeDisplay.textContent = `${cur.padStart(5, '0')} / ${tot.padStart(5, '0')}`;
+
+  // 2. 更新 Mode 2 統計與缺漏秒數
+  if (currentMode === 2) {
+    const seq = sequences[2];
+    let totalDur = 0;
+    for (let i = 0; i < seq.length; i++) {
+      totalDur += parseFloat(seq[i].dur) || 0;
+    }
+    
+    // 缺漏秒數 = 當前音檔時間 - 已經設定的光表總長度
+    const diff = audio.currentTime - totalDur;
+    
+    document.getElementById('statTotalDur').textContent = totalDur.toFixed(2);
+    
+    const diffEl = document.getElementById('statDiff');
+    diffEl.textContent = diff.toFixed(2);
+    
+    // UX 巧思：加上顏色提示
+    if (diff > 0.01) diffEl.style.color = '#4ade80';       // 綠色：還有空位，提示你要把這個秒數填進去
+    else if (diff < -0.01) diffEl.style.color = '#ef4444'; // 紅色：光表太長了，已經超出音樂目前時間
+    else diffEl.style.color = '#ccc';                      // 灰色：剛剛好完美對齊
+  }
+}
  
 // ========== Utils ==========
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
