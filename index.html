@@ -95,6 +95,10 @@
   <button class="btn btn-primary" id="connectBtn" onclick="toggleConnect()">Connect</button>
   <button class="btn btn-ghost" id="readBtn" onclick="readConfig()" disabled>Read Device</button>
   <button class="btn btn-success" id="uploadBtn" onclick="uploadConfig()" disabled>Upload to Device</button>
+  
+  <button class="btn btn-warning" onclick="saveToFile()">Save to PC</button>
+  <button class="btn btn-warning" onclick="loadFromFile()">Load from PC</button>
+  <input type="file" id="fileInput" accept=".json" style="display:none" onchange="handleFileSelect(event)">
 </div>
 
 <div class="tabs">
@@ -518,7 +522,74 @@ async function stopPreview() {
   if (!connected) return;
   await sendCmd('STOP');
 }
+// ========== Save / Load Local File ==========
 
+// 將目前的設定打包成 JSON 並觸發下載
+function saveToFile() {
+  // 將 sequences 物件轉為 JSON 字串，並縮排增加可讀性
+  const data = JSON.stringify(sequences, null, 2);
+  
+  // 建立一個 Blob 物件 (大型二進位物件)
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  
+  // 建立一個隱藏的 <a> 標籤來觸發下載
+  const a = document.createElement('a');
+  a.href = url;
+  
+  // 預設檔名加上時間戳記，避免覆蓋
+  const dateStr = new Date().toISOString().slice(0,10).replace(/-/g, '');
+  a.download = `LightStick_Config_${dateStr}.json`;
+  
+  document.body.appendChild(a);
+  a.click();
+  
+  // 下載後清理殘留物件
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  log('Configuration saved to PC', 'rx');
+}
+
+// 觸發隱藏的檔案輸入框
+function loadFromFile() {
+  document.getElementById('fileInput').click();
+}
+
+// 讀取選取的檔案並還原設定
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const imported = JSON.parse(e.target.result);
+      
+      // 基本的防呆驗證：檢查檔案格式是否包含 mode 1 和 2 的陣列
+      if (imported && Array.isArray(imported['1']) && Array.isArray(imported['2'])) {
+        sequences = imported;
+        selectedIdx = -1; // 重置選擇狀態
+        renderSeq();
+        renderParams();
+        alert('Configuration loaded successfully!');
+        log('Configuration loaded from file: ' + file.name, 'rx');
+      } else {
+        alert('Invalid file format. Please upload a valid LightStick JSON config.');
+        log('File load error: Invalid format', 'err');
+      }
+    } catch (err) {
+      alert('Error reading file. The file might be corrupted.');
+      log('File read error: ' + err.message, 'err');
+    }
+    
+    // 清空 input 的值，確保下次選取同一個檔案也能觸發 change 事件
+    event.target.value = '';
+  };
+  
+  // 以純文字方式讀取檔案
+  reader.readAsText(file);
+}
 // ========== Utils ==========
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
