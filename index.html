@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LightStick Config</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background:#0f0f1a; color:#e0e0e0; min-height:100vh; }
+
+  /* ===== Top Bar ===== */
+  .topbar { display:flex; align-items:center; gap:12px; padding:12px 20px; background:#1a1a2e; border-bottom:1px solid #2a2a4a; }
+  .topbar h1 { font-size:18px; color:#fff; margin-right:auto; }
+  .topbar h1 span { color:#ff6b6b; }
+  .status { font-size:13px; padding:4px 12px; border-radius:12px; background:#2a2a3a; }
+  .status.connected { background:#1a3a2a; color:#4ade80; }
+  .status.disconnected { color:#888; }
+  .btn { padding:8px 16px; border:none; border-radius:6px; cursor:pointer; font-size:13px; font-weight:600; transition:all .2s; }
+  .btn:hover { filter:brightness(1.15); }
+  .btn-primary { background:#6366f1; color:#fff; }
+  .btn-success { background:#22c55e; color:#fff; }
+  .btn-warning { background:#f59e0b; color:#000; }
+  .btn-danger { background:#ef4444; color:#fff; }
+  .btn-ghost { background:transparent; border:1px solid #444; color:#ccc; }
+  .btn:disabled { opacity:.4; cursor:not-allowed; }
+
+  /* ===== Tabs ===== */
+  .tabs { display:flex; padding:0 20px; background:#151528; }
+  .tab { padding:12px 24px; border:none; background:none; color:#888; font-size:14px; font-weight:600; cursor:pointer; border-bottom:2px solid transparent; transition:all .2s; }
+  .tab.active { color:#fff; border-bottom-color:#6366f1; }
+  .tab:hover { color:#bbb; }
+
+  /* ===== Main Layout ===== */
+  .main { display:flex; gap:0; height:calc(100vh - 110px); }
+
+  /* Left: Effect Library */
+  .lib { width:280px; min-width:280px; padding:16px; border-right:1px solid #2a2a4a; overflow-y:auto; }
+  .lib h2 { font-size:14px; color:#888; margin-bottom:12px; text-transform:uppercase; letter-spacing:1px; }
+  .effect-card { display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:8px; background:#1e1e36; border:1px solid #2a2a4a; border-radius:8px; cursor:pointer; transition:all .15s; }
+  .effect-card:hover { border-color:#6366f1; background:#252545; transform:translateX(3px); }
+  .effect-icon { font-size:22px; width:36px; text-align:center; }
+  .effect-info { flex:1; }
+  .effect-name { font-size:14px; font-weight:600; }
+  .effect-desc { font-size:11px; color:#777; margin-top:2px; }
+
+  /* Center: Sequence */
+  .seq-panel { flex:1; display:flex; flex-direction:column; }
+  .seq-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #2a2a4a; }
+  .seq-header h2 { font-size:14px; color:#888; text-transform:uppercase; letter-spacing:1px; }
+  .seq-list { flex:1; overflow-y:auto; padding:12px; }
+  .seq-empty { text-align:center; color:#555; padding:40px 20px; font-size:14px; }
+  .seq-item { display:flex; align-items:center; gap:8px; padding:10px 12px; margin-bottom:6px; background:#1e1e36; border:1px solid #2a2a4a; border-radius:8px; cursor:grab; transition:all .15s; position:relative; }
+  .seq-item:hover { border-color:#6366f1; }
+  .seq-item.active { border-color:#f59e0b; background:#2a2536; }
+  .seq-item.drag-over { border-color:#22c55e; border-style:dashed; }
+  .seq-num { font-size:12px; color:#555; font-weight:700; width:20px; text-align:center; }
+  .seq-color-dot { width:14px; height:14px; border-radius:50%; border:2px solid #333; flex-shrink:0; }
+  .seq-name { flex:1; font-size:13px; }
+  .seq-dur { font-size:11px; color:#888; }
+  .seq-del { background:none; border:none; color:#555; cursor:pointer; font-size:16px; padding:2px 6px; border-radius:4px; }
+  .seq-del:hover { color:#ef4444; background:#2a1a1a; }
+
+  /* Right: Params */
+  .params { width:320px; min-width:320px; padding:16px; border-left:1px solid #2a2a4a; overflow-y:auto; }
+  .params h2 { font-size:14px; color:#888; margin-bottom:16px; text-transform:uppercase; letter-spacing:1px; }
+  .param-empty { text-align:center; color:#555; padding:30px 10px; font-size:13px; }
+  .param-group { margin-bottom:16px; }
+  .param-label { display:flex; justify-content:space-between; font-size:12px; color:#aaa; margin-bottom:6px; }
+  .param-val { color:#fff; font-weight:600; }
+  input[type=range] { width:100%; height:6px; -webkit-appearance:none; background:#2a2a4a; border-radius:3px; outline:none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; background:#6366f1; border-radius:50%; cursor:pointer; }
+  .hue-slider { background: linear-gradient(to right, #f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00) !important; }
+  .param-preview { width:100%; height:30px; border-radius:6px; margin-top:8px; border:1px solid #333; }
+  input[type=number] { width:80px; padding:6px 8px; background:#1a1a2e; border:1px solid #333; color:#fff; border-radius:4px; font-size:13px; }
+  .preview-btn { width:100%; margin-top:12px; }
+
+  /* ===== Footer ===== */
+  .footer { display:flex; gap:8px; padding:12px 20px; background:#1a1a2e; border-top:1px solid #2a2a4a; justify-content:flex-end; }
+
+  /* ===== Log ===== */
+  .log-toggle { position:fixed; bottom:10px; left:10px; z-index:100; }
+  .log-panel { position:fixed; bottom:0; left:0; right:0; height:180px; background:#0a0a14; border-top:1px solid #333; display:none; overflow-y:auto; padding:8px 12px; font-family:monospace; font-size:11px; z-index:99; }
+  .log-panel.show { display:block; }
+  .log-line { color:#666; line-height:1.6; }
+  .log-line.tx { color:#6366f1; }
+  .log-line.rx { color:#22c55e; }
+  .log-line.err { color:#ef4444; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Light<span>Stick</span> Config</h1>
+  <span id="status" class="status disconnected">Disconnected</span>
+  <button class="btn btn-primary" id="connectBtn" onclick="toggleConnect()">Connect</button>
+  <button class="btn btn-ghost" id="readBtn" onclick="readConfig()" disabled>Read Device</button>
+  <button class="btn btn-success" id="uploadBtn" onclick="uploadConfig()" disabled>Upload to Device</button>
+</div>
+
+<div class="tabs">
+  <button class="tab active" data-mode="1" onclick="switchTab(1)">Mode 1 — Button Mode</button>
+  <button class="tab" data-mode="2" onclick="switchTab(2)">Mode 2 — Timer Mode</button>
+</div>
+
+<div class="main">
+  <div class="lib">
+    <h2>Effect Library (Click to Add)</h2>
+    <div id="effectLib"></div>
+  </div>
+
+  <div class="seq-panel">
+    <div class="seq-header">
+      <h2 id="seqTitle">Mode 1 Sequence</h2>
+      <button class="btn btn-danger btn-sm" onclick="clearSeq()" style="font-size:12px;padding:4px 10px;">Clear</button>
+    </div>
+    <div class="seq-list" id="seqList">
+      <div class="seq-empty">Click an effect on the left to add to the sequence<br>(Drag to reorder)</div>
+    </div>
+  </div>
+
+  <div class="params">
+    <h2>Parameters</h2>
+    <div id="paramsContent">
+      <div class="param-empty">Select an item in the sequence<br>to edit parameters</div>
+    </div>
+  </div>
+</div>
+
+<button class="btn btn-ghost log-toggle" onclick="toggleLog()" style="font-size:11px;padding:4px 8px;">Log</button>
+<div class="log-panel" id="logPanel"></div>
+
+<script>
+// ========== Effect Definitions ==========
+const EFFECTS = [
+  { id:0, name:'Solid',     icon:'💡', desc:'Solid color, always on' },
+  { id:1, name:'Wave',     icon:'🌊', desc:'Hue wave scrolling' },
+  { id:2, name:'Symmetry', icon:'💎', desc:'Symmetrical light points' },
+  { id:3, name:'Breathe', icon:'💗', desc:'Center to outward breathing' },
+  { id:4, name:'Tri-Color', icon:'🎨', desc:'Three-sided hue shift' },
+  { id:5, name:'Sparkle', icon:'✨', desc:'Random flashing sparks' },
+];
+
+// ========== State ==========
+let port = null;
+let reader = null;
+let writer = null;
+let connected = false;
+let currentMode = 1;
+let selectedIdx = -1;
+let sequences = { 1: [], 2: [] };  // { type, hue, sat, bri, spd, dur }
+let rxBuffer = '';
+
+// ========== Initialize ==========
+window.addEventListener('DOMContentLoaded', () => {
+  renderEffectLib();
+  renderSeq();
+});
+
+// ========== Render Effect Library ==========
+function renderEffectLib() {
+  const el = document.getElementById('effectLib');
+  el.innerHTML = EFFECTS.map(e => `
+    <div class="effect-card" onclick="addEffect(${e.id})">
+      <div class="effect-icon">${e.icon}</div>
+      <div class="effect-info">
+        <div class="effect-name">${e.name}</div>
+        <div class="effect-desc">${e.desc}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ========== Add Effect ==========
+function addEffect(typeId) {
+  const seq = sequences[currentMode];
+  if (seq.length >= 40) { alert('Max 40 effects allowed'); return; } 
+  seq.push({ type:typeId, hue:0, sat:255, bri:200, spd:128, dur:(currentMode===2 ? 5 : 0) });
+  selectedIdx = seq.length - 1;
+  renderSeq();
+  renderParams();
+}
+
+// ========== Render Sequence ==========
+function renderSeq() {
+  const el = document.getElementById('seqList');
+  const seq = sequences[currentMode];
+  document.getElementById('seqTitle').textContent =
+    `Mode ${currentMode} Sequence (${seq.length}/40)`;
+
+  if (seq.length === 0) {
+    el.innerHTML = '<div class="seq-empty">Click an effect on the left to add to the sequence<br>(Drag to reorder)</div>';
+    return;
+  }
+
+  el.innerHTML = seq.map((s, i) => {
+    const ef = EFFECTS[s.type];
+    const col = s.sat < 30 ? '#fff' : hsvToHex(s.hue, s.sat, s.bri);
+    const durText = currentMode === 2 ? `<span class="seq-dur">${s.dur}s</span>` : '';
+    return `
+      <div class="seq-item ${i===selectedIdx?'active':''}"
+           draggable="true"
+           ondragstart="dragStart(event,${i})"
+           ondragover="dragOver(event,${i})"
+           ondrop="dragDrop(event,${i})"
+           ondragend="dragEnd(event)"
+           onclick="selectItem(${i})">
+        <span class="seq-num">${i+1}</span>
+        <span class="seq-color-dot" style="background:${col}"></span>
+        <span class="seq-name">${ef.icon} ${ef.name}</span>
+        ${durText}
+        <button class="seq-del" onclick="event.stopPropagation();delItem(${i})">✕</button>
+      </div>
+    `;
+  }).join('');
+}
+
+// ========== Item Selection ==========
+function selectItem(i) {
+  selectedIdx = i;
+  renderSeq();
+  renderParams();
+}
+
+function delItem(i) {
+  sequences[currentMode].splice(i, 1);
+  if (selectedIdx >= sequences[currentMode].length) selectedIdx = sequences[currentMode].length - 1;
+  renderSeq();
+  renderParams();
+}
+
+function clearSeq() {
+  if (sequences[currentMode].length === 0) return;
+  if (!confirm('Are you sure you want to clear all effects?')) return;
+  sequences[currentMode] = [];
+  selectedIdx = -1;
+  renderSeq();
+  renderParams();
+}
+
+// ========== Drag and Drop ==========
+let dragIdx = -1;
+function dragStart(e, i) { dragIdx = i; e.dataTransfer.effectAllowed = 'move'; }
+function dragOver(e, i) {
+  e.preventDefault();
+  document.querySelectorAll('.seq-item').forEach(el => el.classList.remove('drag-over'));
+  e.currentTarget.classList.add('drag-over');
+}
+function dragDrop(e, i) {
+  e.preventDefault();
+  const seq = sequences[currentMode];
+  const item = seq.splice(dragIdx, 1)[0];
+  seq.splice(i, 0, item);
+  selectedIdx = i;
+  renderSeq();
+  renderParams();
+}
+function dragEnd(e) {
+  document.querySelectorAll('.seq-item').forEach(el => el.classList.remove('drag-over'));
+}
+
+// ========== Parameters Panel ==========
+function renderParams() {
+  const el = document.getElementById('paramsContent');
+  const seq = sequences[currentMode];
+
+  if (selectedIdx < 0 || selectedIdx >= seq.length) {
+    el.innerHTML = '<div class="param-empty">Select an item in the sequence<br>to edit parameters</div>';
+    return;
+  }
+
+  const s = seq[selectedIdx];
+  const ef = EFFECTS[s.type];
+  const previewCol = s.sat < 30 ? '#ffffff' : hsvToHex(s.hue, s.sat, s.bri);
+
+  let durHtml = '';
+  if (currentMode === 2) {
+    durHtml = `
+      <div class="param-group">
+        <div class="param-label"><span>Duration</span><span class="param-val">${s.dur} sec</span></div>
+        <input type="number" value="${s.dur}" min="1" max="3600" onchange="updateParam('dur',parseInt(this.value)||5)">
+      </div>
+    `;
+  }
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+      <span style="font-size:24px;">${ef.icon}</span>
+      <span style="font-size:16px;font-weight:700;">${ef.name}</span>
+      <span style="font-size:12px;color:#666;">Step ${selectedIdx + 1}</span>
+    </div>
+
+    <div class="param-group">
+      <div class="param-label"><span>Hue</span><span class="param-val">${s.hue}</span></div>
+      <input type="range" min="0" max="255" value="${s.hue}" class="hue-slider" oninput="updateParam('hue',+this.value)">
+    </div>
+
+    <div class="param-group">
+      <div class="param-label"><span>Saturation</span><span class="param-val">${s.sat}${s.sat<30?' (White)':''}</span></div>
+      <input type="range" min="0" max="255" value="${s.sat}" oninput="updateParam('sat',+this.value)">
+    </div>
+
+    <div class="param-group">
+      <div class="param-label"><span>Brightness</span><span class="param-val">${s.bri}</span></div>
+      <input type="range" min="10" max="255" value="${s.bri}" oninput="updateParam('bri',+this.value)">
+    </div>
+
+    <div class="param-group">
+      <div class="param-label"><span>Speed</span><span class="param-val">${s.spd}</span></div>
+      <input type="range" min="1" max="255" value="${s.spd}" oninput="updateParam('spd',+this.value)">
+    </div>
+
+    ${durHtml}
+
+    <div class="param-preview" style="background:${previewCol};"></div>
+
+    <button class="btn btn-warning preview-btn" onclick="previewEffect()" ${connected?'':'disabled'}>
+      Live Preview ▶
+    </button>
+    <button class="btn btn-ghost preview-btn" onclick="stopPreview()" ${connected?'':'disabled'} style="margin-top:6px;">
+      Stop Preview ■
+    </button>
+  `;
+}
+
+function updateParam(key, val) {
+  const seq = sequences[currentMode];
+  if (selectedIdx < 0 || selectedIdx >= seq.length) return;
+  seq[selectedIdx][key] = val;
+  renderSeq();
+  renderParams();
+}
+
+// ========== Tab Switching ==========
+function switchTab(mode) {
+  currentMode = mode;
+  selectedIdx = -1;
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('active', +t.dataset.mode === mode);
+  });
+  renderSeq();
+  renderParams();
+}
+
+// ========== Web Serial ==========
+async function toggleConnect() {
+  if (connected) {
+    await disconnect();
+  } else {
+    await doConnect();
+  }
+}
+
+async function doConnect() {
+  try {
+    if (!navigator.serial) {
+      alert('This browser does not support the Web Serial API.\nPlease use Chrome and ensure you open this page from localhost or HTTPS.');
+      return;
+    }
+    port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 9600 });
+
+    const decoder = new TextDecoderStream();
+    port.readable.pipeTo(decoder.writable);
+    reader = decoder.readable.getReader();
+
+    const encoder = new TextEncoderStream();
+    encoder.readable.pipeTo(port.writable);
+    writer = encoder.writable.getWriter();
+
+    connected = true;
+    updateUI();
+    readLoop();
+    log('Connected', 'rx');
+
+    // Ping
+    await sendCmd('PING');
+  } catch (e) {
+    log('Connection failed: ' + e.message, 'err');
+  }
+}
+
+async function disconnect() {
+  try {
+    if (reader) { await reader.cancel(); reader = null; }
+    if (writer) { await writer.close(); writer = null; }
+    if (port) { await port.close(); port = null; }
+  } catch(e) {}
+  connected = false;
+  updateUI();
+  log('Disconnected', 'err');
+}
+
+function updateUI() {
+  const s = document.getElementById('status');
+  const cb = document.getElementById('connectBtn');
+  s.textContent = connected ? 'Connected' : 'Disconnected';
+  s.className = 'status ' + (connected ? 'connected' : 'disconnected');
+  cb.textContent = connected ? 'Disconnect' : 'Connect';
+  document.getElementById('readBtn').disabled = !connected;
+  document.getElementById('uploadBtn').disabled = !connected;
+  renderParams(); // refresh preview buttons
+}
+
+async function readLoop() {
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      rxBuffer += value;
+      let lines = rxBuffer.split('\n');
+      rxBuffer = lines.pop(); // keep incomplete line
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed) handleResponse(trimmed);
+      }
+    }
+  } catch(e) {
+    if (connected) log('Read interrupted: ' + e.message, 'err');
+  }
+}
+
+// ========== Serial Commands ==========
+let responseResolve = null;
+let readConfigState = null;
+let readM1 = [], readM2 = [];
+let readM1Expect = 0, readM2Expect = 0;
+
+async function sendCmd(cmd) {
+  if (!writer) return;
+  log('TX: ' + cmd, 'tx');
+  await writer.write(cmd + '\n');
+}
+
+function handleResponse(line) {
+  log('RX: ' + line, 'rx');
+
+  // Config reading state machine
+  if (readConfigState !== null) {
+    if (line.startsWith('CFG:M1:')) {
+      readM1Expect = parseInt(line.substring(7));
+      readM1 = [];
+      readConfigState = 'M1';
+    } else if (line.startsWith('CFG:M2:')) {
+      readM2Expect = parseInt(line.substring(7));
+      readM2 = [];
+      readConfigState = 'M2';
+    } else if (line.startsWith('E:') && readConfigState === 'M1') {
+      const parts = line.substring(2).split(',').map(Number);
+      if (parts.length >= 5) {
+        readM1.push({ type:parts[0], hue:parts[1], sat:parts[2], bri:parts[3], spd:parts[4], dur:0 });
+      }
+    } else if (line.startsWith('E:') && readConfigState === 'M2') {
+      const parts = line.substring(2).split(',').map(Number);
+      if (parts.length >= 6) {
+        readM2.push({ type:parts[0], hue:parts[1], sat:parts[2], bri:parts[3], spd:parts[4], dur:parts[5] });
+      }
+    } else if (line === 'CFG:END') {
+      sequences[1] = readM1;
+      sequences[2] = readM2;
+      selectedIdx = -1;
+      renderSeq();
+      renderParams();
+      readConfigState = null;
+      log('Config read: M1=' + readM1.length + ' M2=' + readM2.length, 'rx');
+    }
+    return;
+  }
+}
+
+// ========== Upload Config ==========
+async function uploadConfig() {
+  if (!connected) return;
+  const m1 = sequences[1];
+  const m2 = sequences[2];
+
+  // Mode 1
+  await sendCmd('M1:' + m1.length);
+  await sleep(100);
+  for (const s of m1) {
+    await sendCmd(`E:${s.type},${s.hue},${s.sat},${s.bri},${s.spd}`);
+    await sleep(50);
+  }
+
+  // Mode 2
+  await sendCmd('M2:' + m2.length);
+  await sleep(100);
+  for (const s of m2) {
+    await sendCmd(`E:${s.type},${s.hue},${s.sat},${s.bri},${s.spd},${s.dur}`);
+    await sleep(50);
+  }
+
+  // Save
+  await sleep(100);
+  await sendCmd('SAVE');
+  log('Upload complete!', 'rx');
+  alert('Configuration uploaded and saved to LightStick!');
+}
+
+// ========== Read Config ==========
+async function readConfig() {
+  if (!connected) return;
+  readConfigState = 'INIT';
+  readM1 = [];
+  readM2 = [];
+  await sendCmd('READ');
+}
+
+// ========== Live Preview ==========
+async function previewEffect() {
+  if (!connected) return;
+  const seq = sequences[currentMode];
+  if (selectedIdx < 0 || selectedIdx >= seq.length) return;
+  const s = seq[selectedIdx];
+  await sendCmd(`TEST:${s.type},${s.hue},${s.sat},${s.bri},${s.spd}`);
+}
+
+async function stopPreview() {
+  if (!connected) return;
+  await sendCmd('STOP');
+}
+
+// ========== Utils ==========
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function hsvToHex(h, s, v) {
+  h = (h / 255) * 360;
+  s = s / 255;
+  v = v / 255;
+  const c = v * s;
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  const m = v - c;
+  let r, g, b;
+  if (h < 60)       { r=c; g=x; b=0; }
+  else if (h < 120) { r=x; g=c; b=0; }
+  else if (h < 180) { r=0; g=c; b=x; }
+  else if (h < 240) { r=0; g=x; b=c; }
+  else if (h < 300) { r=x; g=0; b=c; }
+  else              { r=c; g=0; b=x; }
+  const toHex = n => Math.round((n+m)*255).toString(16).padStart(2,'0');
+  return '#' + toHex(r) + toHex(g) + toHex(b);
+}
+
+// ========== Log ==========
+function log(msg, type='') {
+  const el = document.getElementById('logPanel');
+  const div = document.createElement('div');
+  div.className = 'log-line ' + type;
+  div.textContent = new Date().toLocaleTimeString() + ' ' + msg;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function toggleLog() {
+  document.getElementById('logPanel').classList.toggle('show');
+}
+</script>
+</body>
+</html>
