@@ -9,7 +9,7 @@
 #define NUM_STRIPS    3
 #define BTN_A_PIN     10   // 按鈕A（Mode1: 下一個效果）
 #define BTN_B_PIN     11   // 按鈕B（Mode1: 上一個效果）
-#define SW_PIN        2    // 指撥開關（LOW=Mode1 按鈕模式, HIGH=Mode2 計時模式）
+#define SW_PIN        13    // 指撥開關
 
 // ========== EEPROM 配置 ==========
 #define MAGIC_BYTE    0xA5
