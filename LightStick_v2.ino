@@ -2,13 +2,13 @@
 #include <EEPROM.h>
 
 // ========== 硬體腳位 ==========
-#define LED_PIN_1     9
-#define LED_PIN_2     7
-#define LED_PIN_3     8
+#define LED_PIN_1     9    // 燈條
+#define LED_PIN_2     7    // 燈條
+#define LED_PIN_3     8    // 燈條
 #define NUM_LEDS      21
 #define NUM_STRIPS    3
-#define BTN_A_PIN     10   // 按鈕A（Mode1: 下一個效果）
-#define BTN_B_PIN     11   // 按鈕B（Mode1: 上一個效果）
+#define BTN_A_PIN     10   // 按鈕A
+#define BTN_B_PIN     11   // 按鈕B
 #define SW_PIN        13    // 指撥開關
 
 // ========== EEPROM 配置 ==========
